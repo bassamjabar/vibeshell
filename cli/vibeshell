@@ -1,0 +1,3 @@
+#!/bin/sh
+# VibeShell launcher for POSIX shells. Put this folder on your PATH.
+exec node "$(dirname "$0")/vibeshell.js" "$@"

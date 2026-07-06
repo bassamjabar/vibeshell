@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A1B22"/>
+      <stop offset="1" stop-color="#0A0B10"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="0.55" stop-color="#7C6CF6"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.42" cy="0.45" r="0.65">
+      <stop offset="0" stop-color="#7C6CF6" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#7C6CF6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="14" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- tile -->
+  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
+  <!-- subtle inner edge highlight -->
+  <rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="3"/>
+  <!-- ambient halo behind chevron -->
+  <rect width="512" height="512" rx="112" fill="url(#halo)"/>
+
+  <!-- glowing gradient chevron -->
+  <g filter="url(#glow)">
+    <path d="M 138 142 L 286 256 L 138 370" fill="none" stroke="url(#spark)" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- AI spark, top-right of chevron -->
+  <g filter="url(#glow)">
+    <path d="M 352 118 L 364 152 L 398 164 L 364 176 L 352 210 L 340 176 L 306 164 L 340 152 Z" fill="#22D3EE"/>
+  </g>
+
+  <!-- cursor bar -->
+  <rect x="312" y="336" width="110" height="34" rx="17" fill="#E5E7EB"/>
+</svg>

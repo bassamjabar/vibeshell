@@ -1,0 +1,69 @@
+{
+  "name": "vibeshell",
+  "version": "0.1.0",
+  "description": "VibeShell — the AI terminal you never have to learn. A beginner-friendly desktop app for running AI coding agents.",
+  "main": "main.js",
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "lint": "eslint .",
+    "test:e2e": "node test/smoke.e2e.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win",
+    "vibeshell:vscode": "node scripts/install-vscode.mjs",
+    "vibeshell:android-studio": "node scripts/install-android-studio.mjs"
+  },
+  "keywords": [
+    "ai",
+    "claude-code",
+    "electron",
+    "agents"
+  ],
+  "author": "Bassam Jabar",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bassamjabar/vibeshell.git"
+  },
+  "homepage": "https://github.com/bassamjabar/vibeshell#readme",
+  "bugs": {
+    "url": "https://github.com/bassamjabar/vibeshell/issues"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.6.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.199",
+    "highlight.js": "^11.11.1",
+    "marked": "^18.0.5"
+  },
+  "build": {
+    "appId": "com.vibeshell.app",
+    "productName": "VibeShell",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "main/**",
+      "renderer/**",
+      "assets/**"
+    ],
+    "asar": false,
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "VibeShell-Setup-${version}.${ext}"
+    }
+  }
+}

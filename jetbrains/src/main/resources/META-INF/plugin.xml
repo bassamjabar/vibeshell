@@ -1,0 +1,21 @@
+<idea-plugin>
+    <id>com.vibeshell.jetbrains</id>
+    <name>VibeShell</name>
+    <vendor>VibeShell</vendor>
+    <description><![CDATA[
+        VibeShell — AI coding agents (Claude Code) inside a bottom panel,
+        next to the terminal. The full VibeShell UI runs in an embedded
+        browser; the backend runs as a Node sidecar.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow
+            id="VibeShell"
+            anchor="bottom"
+            icon="/icons/vibeshell.svg"
+            factoryClass="com.vibeshell.VibeShellToolWindowFactory"/>
+        <postStartupActivity implementation="com.vibeshell.VibeShellTerminalWatcher"/>
+    </extensions>
+</idea-plugin>

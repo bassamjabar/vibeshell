@@ -1,0 +1,35 @@
+name: CI
+
+# Verifies the code on all three target OSes — the practical way to test
+# cross-platform without owning a Mac or a Linux box.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Syntax-check every source file
+        run: node scripts/syntax-check.mjs
+
+      - name: CLI logic tests
+        run: node cli/vibeshell.test.js

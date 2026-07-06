@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self'; img-src 'self' data:; script-src 'self'" />
+  <title>VibeShell</title>
+  <link rel="stylesheet" href="renderer/styles.css" />
+  <link rel="stylesheet" href="renderer/vendor/hljs-dark.css" />
+</head>
+<body>
+
+  <!-- Shown when the backend can't be reached (e.g. Node.js missing). -->
+  <div id="backend-banner" class="backend-banner hidden"></div>
+
+  <!-- ============ HOME SCREEN: the AI tool launcher ============ -->
+  <section id="screen-home" class="screen">
+    <div class="titlebar-drag"></div>
+    <div class="home-fabs">
+      <button id="btn-lang-home" class="lang-fab" data-i18n-title="toggleLang">EN</button>
+      <button id="btn-dark-home" class="dark-fab" data-i18n-title="toggleDark">&#127769;</button>
+    </div>
+    <main class="home">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+            <path d="M5 5.5 L12.5 12 L5 18.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M18 3.5 L18.9 6.1 L21.5 7 L18.9 7.9 L18 10.5 L17.1 7.9 L14.5 7 L17.1 6.1 Z" fill="currentColor"/>
+            <rect x="13" y="16.6" width="6.5" height="2.2" rx="1.1" fill="currentColor"/>
+          </svg>
+        </div>
+        <h1>VibeShell</h1>
+        <p class="tagline" data-i18n="tagline"></p>
+      </div>
+
+      <div class="tools">
+        <h2 data-i18n="yourTools"></h2>
+        <ul id="tools-list">
+          <li class="tools-loading" data-i18n="checkingInstalled"></li>
+        </ul>
+        <p class="tools-hint" data-i18n="toolsHint"></p>
+      </div>
+    </main>
+  </section>
+
+  <!-- ============ WORKSPACE: sidebar + chat, like the browser apps ============ -->
+  <section id="screen-project" class="screen hidden">
+    <div id="workspace" class="workspace">
+
+      <aside class="sidebar">
+        <div class="sidebar-head" data-i18n="sidebarTitle"></div>
+        <button id="sb-general" class="sb-action">
+          <svg class="sb-ico" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H4l2.4-2.9A8 8 0 1 1 21 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <span data-i18n="justChat"></span>
+        </button>
+        <button id="sb-new" class="sb-action">
+          <svg class="sb-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span data-i18n="newProject"></span>
+        </button>
+        <button id="sb-open" class="sb-action">
+          <svg class="sb-ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <span data-i18n="openFolder"></span>
+        </button>
+        <input id="sb-search" type="text" data-i18n-placeholder="searchChats"
+               autocomplete="off" spellcheck="false" />
+        <div class="sb-scroll">
+          <div class="sb-label" data-i18n="projectsLabel"></div>
+          <ul id="sb-projects"></ul>
+          <p id="sb-empty" class="sb-empty hidden" data-i18n="sbEmpty"></p>
+          <div class="sb-label" data-i18n="chatsLabel"></div>
+          <ul id="sb-chats"></ul>
+          <p id="sb-chats-empty" class="sb-empty hidden" data-i18n="sbChatsEmpty"></p>
+          <div id="sb-external-label" class="sb-label hidden" data-i18n="terminalSessionsLabel"></div>
+          <ul id="sb-external"></ul>
+        </div>
+        <button id="btn-back" class="sb-footer" data-i18n="allTools"></button>
+      </aside>
+
+      <div class="chat-side">
+        <header class="project-bar">
+          <button id="btn-sidebar" class="ghost-btn icon-btn" data-i18n-title="toggleSidebar">&#9776;</button>
+          <button id="btn-new-chat" class="ghost-btn" data-i18n="newChat" data-i18n-title="startFresh"></button>
+          <!-- ChatGPT & Gemini keep their model picker up here, top-left -->
+          <div id="model-mount-header" class="model-mount"></div>
+          <div class="project-id">
+            <span id="project-name" class="project-name"></span>
+            <span id="project-path" class="project-path"></span>
+          </div>
+          <div id="usage-pill" class="usage-pill hidden" data-i18n-title="usageTitle">
+            <span class="usage-bar"><span id="usage-fill" class="usage-fill"></span></span>
+            <span id="usage-text"></span>
+          </div>
+          <!-- Working mode: ask / accept edits / plan only / full auto -->
+          <div class="model-picker mode-picker">
+            <button id="mode-btn" class="model-btn" data-i18n-title="modeTitle">
+              <span id="mode-label"></span>
+              <span class="model-chev">&#9662;</span>
+            </button>
+            <div id="mode-menu" class="model-menu menu-sm hidden"></div>
+          </div>
+          <div id="agent-status" class="status-pill" data-state="idle">
+            <span class="status-dot"></span>
+            <span id="status-text" data-i18n="statusIdle"></span>
+          </div>
+          <button id="btn-new-window" class="ghost-btn icon-btn" data-i18n-title="newWindow">⧉</button>
+          <button id="btn-settings" class="ghost-btn icon-btn" data-i18n-title="settings">⚙</button>
+          <button id="btn-lang" class="ghost-btn icon-btn lang-btn" data-i18n-title="toggleLang">EN</button>
+          <button id="btn-dark" class="ghost-btn icon-btn" data-i18n-title="toggleDark">&#127769;</button>
+          <div class="account-wrap">
+            <button id="account-btn" class="account-btn hidden" data-i18n-title="account">?</button>
+            <div id="account-menu" class="model-menu menu-sm hidden"></div>
+          </div>
+        </header>
+
+        <main class="chat">
+          <!-- Live plan: the agent's TodoWrite list, pinned above the feed -->
+          <div id="plan-panel" class="plan-panel hidden">
+            <button id="plan-head" class="plan-head">
+              <span data-i18n="planTitle"></span>
+              <span id="plan-count" class="plan-count"></span>
+              <span class="plan-chev">&#9662;</span>
+            </button>
+            <div class="plan-bar"><span id="plan-fill"></span></div>
+            <ul id="plan-list"></ul>
+          </div>
+          <!-- The greeting is built per-theme in chat.js, like each site's own -->
+          <div id="chat-messages" class="chat-messages"></div>
+          <footer class="composer-area">
+            <div id="attach-strip" class="attach-strip hidden"></div>
+            <div class="composer">
+              <!-- Type "/" for every CLI command, with descriptions -->
+              <div id="cmd-palette" class="cmd-palette hidden"></div>
+              <textarea id="chat-input" rows="1"
+                        data-i18n-placeholder="composerPlaceholder"
+                        spellcheck="false"></textarea>
+              <div class="composer-bar">
+                <button id="btn-attach" class="attach-btn" data-i18n-title="attachImages">＋</button>
+                <div class="composer-spacer"></div>
+                <!-- claude.ai keeps its model picker down here, next to Send -->
+                <div id="model-mount-composer" class="model-mount">
+                  <div id="picker-group" class="picker-group">
+                    <div id="effort-picker" class="model-picker hidden">
+                      <button id="effort-btn" class="model-btn" data-i18n-title="thinkingEffort">
+                        <span id="effort-label">high</span>
+                        <span class="model-chev">&#9662;</span>
+                      </button>
+                      <div id="effort-menu" class="model-menu menu-sm hidden"></div>
+                    </div>
+                    <div id="model-picker" class="model-picker hidden">
+                      <button id="model-btn" class="model-btn" data-i18n-title="switchModel">
+                        <span id="model-label">Model</span>
+                        <span class="model-chev">&#9662;</span>
+                      </button>
+                      <div id="model-menu" class="model-menu hidden"></div>
+                    </div>
+                  </div>
+                </div>
+                <button id="btn-send" class="send-btn" data-i18n-title="send">&#8593;</button>
+              </div>
+            </div>
+            <input id="file-input" type="file" accept="image/*" multiple class="hidden" />
+          </footer>
+          <div id="drop-hint" class="drop-hint hidden" data-i18n="dropHint"></div>
+        </main>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ NEW-PROJECT MODAL ============ -->
+  <div id="modal-create" class="modal-backdrop hidden">
+    <div class="modal">
+      <h2 data-i18n="modalTitle"></h2>
+      <p class="modal-hint" data-i18n="modalHint"></p>
+      <input id="input-project-name" type="text" data-i18n-placeholder="modalPlaceholder"
+             maxlength="60" autocomplete="off" spellcheck="false" />
+      <p id="create-error" class="error hidden"></p>
+      <div class="modal-actions">
+        <button id="btn-create-cancel" class="ghost-btn" data-i18n="cancel"></button>
+        <button id="btn-create-confirm" class="primary-btn" data-i18n="chooseLocation"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ GRANTED PERMISSIONS MODAL ============ -->
+  <div id="modal-perms" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="usage-modal-head">
+        <h2 data-i18n="permsTitle"></h2>
+        <button id="perms-close" class="recent-remove" data-i18n-title="close">×</button>
+      </div>
+      <ul id="perms-list" class="perms-list"></ul>
+      <p id="perms-empty" class="empty hidden" data-i18n="permsEmpty"></p>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS MODAL: MCP servers + standing rules ============ -->
+  <div id="modal-settings" class="modal-backdrop hidden">
+    <div class="modal settings-modal">
+      <div class="usage-modal-head">
+        <h2 data-i18n="settingsTitle"></h2>
+        <button id="settings-close" class="recent-remove" data-i18n-title="close">×</button>
+      </div>
+      <div class="settings-tabs">
+        <button id="tab-mcp" class="settings-tab active" data-i18n="mcpTab"></button>
+        <button id="tab-rules" class="settings-tab" data-i18n="permsTab"></button>
+      </div>
+
+      <div id="pane-mcp" class="settings-pane">
+        <p class="modal-hint" data-i18n="mcpHint"></p>
+        <ul id="mcp-list" class="perms-list"></ul>
+        <p id="mcp-empty" class="empty hidden" data-i18n="mcpEmpty"></p>
+        <div class="settings-add">
+          <input id="mcp-name" type="text" data-i18n-placeholder="mcpNamePh"
+                 autocomplete="off" spellcheck="false" dir="ltr" />
+          <input id="mcp-cmd" type="text" data-i18n-placeholder="mcpCmdPh"
+                 autocomplete="off" spellcheck="false" dir="ltr" />
+          <div class="settings-add-row">
+            <select id="mcp-scope"></select>
+            <button id="mcp-add" class="primary-btn" data-i18n="add"></button>
+          </div>
+          <p id="mcp-error" class="error hidden"></p>
+        </div>
+      </div>
+
+      <div id="pane-rules" class="settings-pane hidden">
+        <p class="modal-hint" data-i18n="permRulesHint"></p>
+        <ul id="rules-list" class="perms-list"></ul>
+        <p id="rules-empty" class="empty hidden" data-i18n="rulesEmpty"></p>
+        <div class="settings-add">
+          <input id="rule-input" type="text" placeholder="Bash(npm *)"
+                 autocomplete="off" spellcheck="false" dir="ltr" />
+          <div class="settings-add-row">
+            <select id="rule-scope"></select>
+            <button id="rule-add" class="primary-btn" data-i18n="add"></button>
+          </div>
+          <p id="rule-error" class="error hidden"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ USAGE DETAILS MODAL ============ -->
+  <div id="modal-usage" class="modal-backdrop hidden">
+    <div class="modal usage-modal">
+      <div class="usage-modal-head">
+        <h2 data-i18n="usage"></h2>
+        <button id="usage-close" class="recent-remove" data-i18n-title="close">×</button>
+      </div>
+      <div id="usage-detail"></div>
+    </div>
+  </div>
+
+  <script src="renderer/i18n.js" defer></script>
+  <script src="renderer/chat.js" defer></script>
+  <script src="renderer/app.js" defer></script>
+  <script src="renderer/settings.js" defer></script>
+</body>
+</html>
