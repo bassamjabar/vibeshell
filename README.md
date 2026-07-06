@@ -8,6 +8,14 @@
 
 Run [Claude Code](https://www.anthropic.com/claude-code) through a friendly graphical panel — inside your code editor or as a standalone desktop app. Describe what you want, review every change, and let the agent write the code. No terminal commands to memorize.
 
+<br/>
+
+<img src="assets/vscode-panel.png" width="860" alt="VibeShell running as a bottom panel inside VS Code, next to the code editor" />
+
+<sub>*VibeShell as a panel inside VS Code — chat with the agent right beside your code.*</sub>
+
+<br/>
+
 [![CI](https://github.com/bassamjabar/vibeshell/actions/workflows/ci.yml/badge.svg)](https://github.com/bassamjabar/vibeshell/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)
