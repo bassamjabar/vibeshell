@@ -189,13 +189,25 @@ class AgentSession {
     }
   }
 
-  // payload: plain string, or { text, images: [{ mediaType, data(base64) }] }.
-  // Images go first in the content blocks (the API reads them better that way).
+  // payload: plain string, or { text, images: [{ mediaType, data(base64) }],
+  //          documents: [{ mediaType, data(base64), name }] }.
+  // Documents and images go first in the content blocks (the API reads them
+  // better that way), then the text.
   send(payload) {
-    const { text, images } =
-      typeof payload === 'string' ? { text: payload, images: [] } : (payload || {});
+    const { text, images, documents } =
+      typeof payload === 'string'
+        ? { text: payload, images: [], documents: [] }
+        : (payload || {});
 
     const blocks = [];
+    for (const doc of (documents || []).slice(0, 5)) {
+      if (!doc || !doc.data || !doc.mediaType) continue;
+      blocks.push({
+        type: 'document',
+        source: { type: 'base64', media_type: String(doc.mediaType), data: String(doc.data) },
+        ...(doc.name ? { title: String(doc.name) } : {}),
+      });
+    }
     for (const img of (images || []).slice(0, 8)) {
       if (!img || !img.data || !img.mediaType) continue;
       blocks.push({

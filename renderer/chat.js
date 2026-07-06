@@ -371,6 +371,17 @@
       }
       el.appendChild(strip);
     }
+    if (entry && Array.isArray(entry.docs) && entry.docs.length > 0) {
+      const docs = document.createElement('div');
+      docs.className = 'msg-docs';
+      for (const nm of entry.docs) {
+        const chip = document.createElement('div');
+        chip.className = 'msg-doc';
+        chip.textContent = `📄 ${nm}`;
+        docs.appendChild(chip);
+      }
+      el.appendChild(docs);
+    }
     if (text) {
       const body = document.createElement('div');
       body.textContent = text;
@@ -1192,16 +1203,48 @@
   /* ---------- Image attachments ---------- */
 
   const attachBtn = document.querySelector('#btn-attach');
+  const attachMenu = document.querySelector('#attach-menu');
   const attachStrip = document.querySelector('#attach-strip');
   const fileInput = document.querySelector('#file-input');
+  const pdfInput = document.querySelector('#pdf-input');
   const dropHint = document.querySelector('#drop-hint');
   const screenEl = document.querySelector('#screen-project');
 
   const MAX_IMAGES = 8;
+  const MAX_DOCS = 5;
+  const MAX_PDF_BYTES = 25 * 1024 * 1024; // ~33MB once base64-encoded, under the API cap
   const MAX_EDGE = 1568;      // Anthropic's sweet spot; bigger is wasted tokens
   const KEEP_AS_IS = 2 * 1024 * 1024;
 
-  let attachments = []; // { mediaType, data(base64), previewUrl }
+  // Images: { kind:'image', mediaType, data(base64), previewUrl }
+  // PDFs:   { kind:'pdf',   mediaType:'application/pdf', data(base64), name }
+  let attachments = [];
+  const imageCount = () => attachments.filter((a) => a.kind !== 'pdf').length;
+  const docCount = () => attachments.filter((a) => a.kind === 'pdf').length;
+
+  function isPdfFile(file) {
+    return !!file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || ''));
+  }
+
+  // PDFs ride along as base64 "document" blocks — Claude reads them natively.
+  async function preparePdf(file) {
+    if (!isPdfFile(file)) return null;
+    if (file.size > MAX_PDF_BYTES) {
+      addErrorLine(t('pdfTooLarge', { n: Math.round(MAX_PDF_BYTES / 1024 / 1024) }));
+      return null;
+    }
+    try {
+      const dataUrl = await readAsDataURL(file);
+      return {
+        kind: 'pdf',
+        mediaType: 'application/pdf',
+        data: String(dataUrl).split(',')[1],
+        name: file.name || 'document.pdf',
+      };
+    } catch {
+      return null;
+    }
+  }
 
   function readAsDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -1233,14 +1276,14 @@
         file.size <= KEEP_AS_IS &&
         /^image\/(png|jpeg|webp|gif)$/.test(file.type);
       if (keep) {
-        return { mediaType: file.type, data: dataUrl.split(',')[1], previewUrl: dataUrl };
+        return { kind: 'image', mediaType: file.type, data: dataUrl.split(',')[1], previewUrl: dataUrl };
       }
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.width * scale));
       canvas.height = Math.max(1, Math.round(img.height * scale));
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       const out = canvas.toDataURL('image/jpeg', 0.85);
-      return { mediaType: 'image/jpeg', data: out.split(',')[1], previewUrl: out };
+      return { kind: 'image', mediaType: 'image/jpeg', data: out.split(',')[1], previewUrl: out };
     } catch {
       return null;
     }
@@ -1253,14 +1296,26 @@
       const chip = document.createElement('div');
       chip.className = 'attach-chip';
 
-      const img = document.createElement('img');
-      img.src = att.previewUrl;
-      chip.appendChild(img);
+      if (att.kind === 'pdf') {
+        chip.classList.add('file');
+        const icon = document.createElement('span');
+        icon.className = 'file-icon';
+        icon.textContent = '📄';
+        const name = document.createElement('span');
+        name.className = 'file-name';
+        name.textContent = att.name;
+        chip.appendChild(icon);
+        chip.appendChild(name);
+      } else {
+        const img = document.createElement('img');
+        img.src = att.previewUrl;
+        chip.appendChild(img);
+      }
 
       const remove = document.createElement('button');
       remove.className = 'attach-remove';
       remove.textContent = '×';
-      remove.title = 'Remove this image';
+      remove.title = t(att.kind === 'pdf' ? 'removeFile' : 'removeImage');
       remove.addEventListener('click', () => {
         attachments.splice(index, 1);
         renderAttachments();
@@ -1272,24 +1327,61 @@
   }
 
   async function addFiles(fileList) {
-    const files = Array.from(fileList || []).filter((f) => f.type.startsWith('image/'));
-    if (files.length === 0) return;
-    for (const file of files) {
-      if (attachments.length >= MAX_IMAGES) {
+    const all = Array.from(fileList || []);
+    const images = all.filter((f) => f.type.startsWith('image/'));
+    const pdfs = all.filter((f) => isPdfFile(f) && !f.type.startsWith('image/'));
+    if (images.length === 0 && pdfs.length === 0) return;
+
+    for (const file of images) {
+      if (imageCount() >= MAX_IMAGES) {
         addErrorLine(t('maxImages', { n: MAX_IMAGES }));
         break;
       }
       const prepared = await prepareImage(file);
       if (prepared) attachments.push(prepared);
     }
+    for (const file of pdfs) {
+      if (docCount() >= MAX_DOCS) {
+        addErrorLine(t('maxDocs', { n: MAX_DOCS }));
+        break;
+      }
+      const prepared = await preparePdf(file);
+      if (prepared) attachments.push(prepared);
+    }
     renderAttachments();
     inputEl.focus();
   }
 
-  attachBtn.addEventListener('click', () => fileInput.click());
+  // "+" opens a menu; each option opens the matching native file picker.
+  function closeAttachMenu() {
+    attachMenu.classList.add('hidden');
+    attachBtn.setAttribute('aria-expanded', 'false');
+  }
+  attachBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const nowHidden = attachMenu.classList.toggle('hidden');
+    attachBtn.setAttribute('aria-expanded', String(!nowHidden));
+  });
+  document.querySelector('#attach-pick-image').addEventListener('click', () => {
+    closeAttachMenu();
+    fileInput.click();
+  });
+  document.querySelector('#attach-pick-pdf').addEventListener('click', () => {
+    closeAttachMenu();
+    pdfInput.click();
+  });
+  document.addEventListener('click', (event) => {
+    if (!attachMenu.classList.contains('hidden') && !event.target.closest('.attach-wrap')) {
+      closeAttachMenu();
+    }
+  });
   fileInput.addEventListener('change', () => {
     addFiles(fileInput.files);
     fileInput.value = '';
+  });
+  pdfInput.addEventListener('change', () => {
+    addFiles(pdfInput.files);
+    pdfInput.value = '';
   });
 
   // Paste a screenshot straight into the box.
@@ -1376,8 +1468,14 @@
     }
 
     const busy = sendBtn.classList.contains('stop-mode');
-    const images = attachments.map(({ mediaType, data }) => ({ mediaType, data }));
-    const previews = attachments.map((a) => a.previewUrl);
+    const images = attachments
+      .filter((a) => a.kind !== 'pdf')
+      .map(({ mediaType, data }) => ({ mediaType, data }));
+    const documents = attachments
+      .filter((a) => a.kind === 'pdf')
+      .map(({ mediaType, data, name }) => ({ mediaType, data, name }));
+    const previews = attachments.filter((a) => a.kind !== 'pdf').map((a) => a.previewUrl);
+    const docNames = documents.map((d) => d.name);
     attachments = [];
     renderAttachments();
     inputEl.value = '';
@@ -1385,7 +1483,7 @@
     hidePalette();
     // While the agent works, the message queues (like typing in the CLI):
     // the bubble shows a hint until the CLI actually picks it up.
-    const userEntry = { t: 'user', text, images: images.length };
+    const userEntry = { t: 'user', text, images: images.length, docs: docNames };
     addUserBubble(text, previews, true, busy, userEntry);
     record(userEntry);
     pendingRewindEntries.push(userEntry); // its uuid arrives on echo (files)
@@ -1401,7 +1499,7 @@
         `[Context — commands I ran myself in the project folder:]\n${ctx}\n\n${text}`;
       pendingShell = [];
     }
-    window.vibeshell.agent.send({ text: outgoing, images });
+    window.vibeshell.agent.send({ text: outgoing, images, documents });
   }
 
   function autoGrow() {

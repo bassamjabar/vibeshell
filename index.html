@@ -134,7 +134,16 @@
                         data-i18n-placeholder="composerPlaceholder"
                         spellcheck="false"></textarea>
               <div class="composer-bar">
-                <button id="btn-attach" class="attach-btn" data-i18n-title="attachImages">＋</button>
+                <div class="attach-wrap">
+                  <button id="btn-attach" class="attach-btn" data-i18n-title="attachFiles"
+                          aria-haspopup="true" aria-expanded="false">＋</button>
+                  <div id="attach-menu" class="attach-menu hidden" role="menu">
+                    <button type="button" id="attach-pick-image" class="attach-menu-item"
+                            role="menuitem" data-i18n="attachImageOption">🖼️ صورة</button>
+                    <button type="button" id="attach-pick-pdf" class="attach-menu-item"
+                            role="menuitem" data-i18n="attachPdfOption">📄 ملف PDF</button>
+                  </div>
+                </div>
                 <div class="composer-spacer"></div>
                 <!-- claude.ai keeps its model picker down here, next to Send -->
                 <div id="model-mount-composer" class="model-mount">
@@ -159,6 +168,7 @@
               </div>
             </div>
             <input id="file-input" type="file" accept="image/*" multiple class="hidden" />
+            <input id="pdf-input" type="file" accept="application/pdf,.pdf" multiple class="hidden" />
           </footer>
           <div id="drop-hint" class="drop-hint hidden" data-i18n="dropHint"></div>
         </main>
