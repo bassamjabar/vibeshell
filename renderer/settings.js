@@ -64,6 +64,7 @@
     switch (code) {
       case 'bad-name': return t('badName');
       case 'no-project': return t('needProject');
+      case 'file-unreadable': return t('fileUnreadable');
       default: return t('genericError');
     }
   }

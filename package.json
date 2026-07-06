@@ -1,11 +1,12 @@
 {
   "name": "vibeshell",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "VibeShell — the AI terminal you never have to learn. A beginner-friendly desktop app for running AI coding agents.",
   "main": "main.js",
   "scripts": {
     "start": "node scripts/start.mjs",
     "lint": "eslint .",
+    "test": "node cli/vibeshell.test.js && node test/agent.test.js && node vscode-extension/test/host-bridge.test.js",
     "test:e2e": "node test/smoke.e2e.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win",

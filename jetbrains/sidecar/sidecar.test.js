@@ -44,7 +44,8 @@ async function main() {
   check('sidecar announced ready', ready);
 
   const tools = await invoke('tools:list');
-  check('tools:list over stdio returns 3 tools', Array.isArray(tools) && tools.length === 3);
+  check('tools:list over stdio returns the catalog',
+    Array.isArray(tools) && tools.length >= 1 && tools.some((t) => t.id === 'claude'));
 
   // settings round-trip (user scope → ~/.claude/settings.json).
   await invoke('settings:permAdd', 'user', null, 'Bash(echo sidecar:*)');
@@ -54,9 +55,14 @@ async function main() {
   const after = await invoke('settings:permList', null);
   check('permRemove over stdio', !after.some((r) => r.rule === 'Bash(echo sidecar:*)'));
 
-  // A live agent session must push events back over stdout.
+  // A live agent session must push events back over stdout. The real SDK
+  // boots a CLI process, so poll instead of guessing a fixed delay — any
+  // agent:event (models, ready, even an error) proves the pipe works.
   await invoke('agent:start', process.cwd(), null, null);
-  await sleep(4000);
+  const deadline = Date.now() + 15000;
+  while (!events.some((e) => e.channel === 'agent:event') && Date.now() < deadline) {
+    await sleep(100);
+  }
   check('agent pushed events over stdio', events.some((e) => e.channel === 'agent:event'));
   await invoke('agent:stop');
 

@@ -31,6 +31,8 @@
       signIn: 'تسجيل الدخول',
       signOut: 'تسجيل الخروج',
       confirmSignOut: 'تسجيل الخروج من Claude على هذا الجهاز؟',
+      confirmBtn: 'تأكيد',
+      fileUnreadable: 'تعذّرت قراءة ملف الإعدادات الحالي — لن نكتب فوقه حفاظاً على محتواه. افحص الملف يدوياً ثم أعد المحاولة.',
       toggleDark: 'تبديل الوضع الداكن',
       toggleLang: 'Switch to English',
 
@@ -255,6 +257,8 @@
       signIn: 'Sign in',
       signOut: 'Sign out',
       confirmSignOut: 'Sign out of Claude on this computer?',
+      confirmBtn: 'Confirm',
+      fileUnreadable: "Couldn't read the existing settings file — refusing to overwrite it so nothing is lost. Check the file by hand and try again.",
       toggleDark: 'Toggle dark mode',
       toggleLang: 'التبديل إلى العربية',
 

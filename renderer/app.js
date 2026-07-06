@@ -305,7 +305,7 @@ function cancelSignIn() {
 }
 
 async function signOutClaude() {
-  if (!window.confirm(t('confirmSignOut'))) return;
+  if (!(await window.appConfirm(t('confirmSignOut')))) return;
   claudeAccount = await window.vibeshell.auth.logout();
   renderTools();
 }
@@ -739,6 +739,45 @@ usageModal.addEventListener('click', (event) => {
   if (event.target === usageModal) usageModal.classList.add('hidden');
 });
 
+/* ---------- In-app confirm dialog ---------- */
+// window.confirm is disabled inside VS Code webviews and JetBrains JCEF (it
+// returns false without showing anything), which made Sign out and Rewind
+// silently do nothing in the editor panels. This modal works everywhere.
+
+const confirmModal = $('#modal-confirm');
+const confirmMessage = $('#confirm-message');
+let confirmResolve = null;
+
+function settleConfirm(answer) {
+  confirmModal.classList.add('hidden');
+  if (confirmResolve) {
+    const resolve = confirmResolve;
+    confirmResolve = null;
+    resolve(answer);
+  }
+}
+
+window.appConfirm = function appConfirm(message) {
+  return new Promise((resolve) => {
+    settleConfirm(false); // a stray open dialog answers "no"
+    confirmResolve = resolve;
+    confirmMessage.textContent = message;
+    confirmModal.classList.remove('hidden');
+    $('#confirm-ok').focus();
+  });
+};
+
+$('#confirm-ok').addEventListener('click', () => settleConfirm(true));
+$('#confirm-cancel').addEventListener('click', () => settleConfirm(false));
+confirmModal.addEventListener('click', (event) => {
+  if (event.target === confirmModal) settleConfirm(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !confirmModal.classList.contains('hidden')) {
+    settleConfirm(false);
+  }
+});
+
 function renderAccountMenu() {
   accountMenu.innerHTML = '';
   if (!claudeAccount || !claudeAccount.loggedIn) return;
@@ -792,7 +831,7 @@ function renderAccountMenu() {
   signOut.textContent = t('signOut');
   signOut.addEventListener('click', async () => {
     accountMenu.classList.add('hidden');
-    if (!window.confirm(t('confirmSignOut'))) return;
+    if (!(await window.appConfirm(t('confirmSignOut')))) return;
     claudeAccount = await window.vibeshell.auth.logout();
     window.AIShellChat.stop();
     applyTheme(null);

@@ -253,6 +253,20 @@
     </div>
   </div>
 
+  <!-- ============ CONFIRM MODAL ============
+       In-app replacement for window.confirm: VS Code webviews and JetBrains
+       JCEF disable native dialogs (confirm() returns false instantly), which
+       silently broke Sign out / Rewind inside editors. -->
+  <div id="modal-confirm" class="modal-backdrop hidden">
+    <div class="modal">
+      <p id="confirm-message" class="modal-hint"></p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="ghost-btn" data-i18n="cancel"></button>
+        <button id="confirm-ok" class="primary-btn" data-i18n="confirmBtn"></button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ USAGE DETAILS MODAL ============ -->
   <div id="modal-usage" class="modal-backdrop hidden">
     <div class="modal usage-modal">

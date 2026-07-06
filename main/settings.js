@@ -30,6 +30,15 @@ function writeJson(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
 }
 
+// Load a config file for editing. A missing file is a fresh {}, but a file
+// that EXISTS yet doesn't parse must abort the edit: writing "{} + our one
+// key" over ~/.claude.json would wipe all the other state it holds.
+function readForEdit(file) {
+  if (!fs.existsSync(file)) return {};
+  const data = readJson(file);
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : null;
+}
+
 function mcpFile(scope, projectDir) {
   return scope === 'project'
     ? path.join(projectDir, '.mcp.json')
@@ -100,7 +109,8 @@ function registerSettingsHandlers() {
 
     try {
       const file = mcpFile(scope, String(projectDir || ''));
-      const data = readJson(file) || {};
+      const data = readForEdit(file);
+      if (data === null) return { ok: false, error: 'file-unreadable' };
       data.mcpServers = data.mcpServers || {};
       data.mcpServers[cleanName] = config;
       writeJson(file, data);
@@ -113,7 +123,7 @@ function registerSettingsHandlers() {
   registry.handle('settings:mcpRemove', async (_event, scope, projectDir, name) => {
     try {
       const file = mcpFile(scope, String(projectDir || ''));
-      const data = readJson(file);
+      const data = readForEdit(file);
       if (data && data.mcpServers) {
         delete data.mcpServers[String(name)];
         writeJson(file, data);
@@ -141,7 +151,8 @@ function registerSettingsHandlers() {
     }
     try {
       const file = settingsFile(scope, String(projectDir || ''));
-      const data = readJson(file) || {};
+      const data = readForEdit(file);
+      if (data === null) return { ok: false, error: 'file-unreadable' };
       data.permissions = data.permissions || {};
       const allow = Array.isArray(data.permissions.allow) ? data.permissions.allow : [];
       if (!allow.includes(cleanRule)) allow.push(cleanRule);
@@ -156,7 +167,7 @@ function registerSettingsHandlers() {
   registry.handle('settings:permRemove', async (_event, scope, projectDir, rule) => {
     try {
       const file = settingsFile(scope, String(projectDir || ''));
-      const data = readJson(file);
+      const data = readForEdit(file);
       if (data && data.permissions && Array.isArray(data.permissions.allow)) {
         data.permissions.allow = data.permissions.allow.filter(
           (r) => String(r) !== String(rule)

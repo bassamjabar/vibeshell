@@ -3,6 +3,7 @@
 // once and installs it into every family editor found on this machine.
 //   npm run vibeshell:vscode
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { banner, task, ok, info, warn, addCliToPath, checkNode, done, style } from './lib.mjs';
@@ -25,7 +26,9 @@ const FAMILY = [
   { name: 'Cursor', cli: 'cursor' },
   { name: 'Windsurf', cli: 'windsurf' },
 ];
-const vsix = 'vibeshell-vscode-0.1.0.vsix';
+// The VSIX name follows the extension's package.json version — never hard-code it.
+const extVersion = JSON.parse(readFileSync(path.join(ext, 'package.json'), 'utf8')).version;
+const vsix = `vibeshell-vscode-${extVersion}.vsix`;
 let installed = 0;
 for (const editor of FAMILY) {
   if (!onPath(editor.cli)) continue;

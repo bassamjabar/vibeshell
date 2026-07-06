@@ -317,8 +317,10 @@
     btn.className = 'msg-rewind';
     btn.textContent = '↩';
     btn.title = t('rewindTitle');
-    btn.addEventListener('click', () => {
-      if (!window.confirm(t('confirmRewind'))) return;
+    btn.addEventListener('click', async () => {
+      // window.appConfirm, not window.confirm — native dialogs are disabled
+      // inside the editor webviews (see app.js).
+      if (!(await window.appConfirm(t('confirmRewind')))) return;
       rewindTo(entry);
     });
     bubble.appendChild(btn);
@@ -782,7 +784,12 @@
       actions.appendChild(btn);
     };
     mk(t('approve'), 'primary-btn', { allow: true });
-    mk(t('alwaysAllow'), 'ghost-btn', { allow: true, always: true });
+    // No blanket grant for shell commands: "always allow Bash" would approve
+    // EVERY future command, unlike the CLI's per-command-prefix rules.
+    // (main/agent.js enforces the same restriction.)
+    if (view.kind !== 'bash') {
+      mk(t('alwaysAllow'), 'ghost-btn', { allow: true, always: true });
+    }
     mk(t('deny'), 'ghost-btn btn-danger', { allow: false });
     card.appendChild(actions);
 

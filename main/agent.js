@@ -80,6 +80,12 @@ function mapCommands(list) {
   }));
 }
 
+// Tools whose "always allow" would be a blanket grant for ARBITRARY shell
+// commands — far coarser than the CLI's own per-command-prefix rules. These
+// stay one-click-per-command (the auto-approve master switch still covers
+// users who explicitly want everything approved).
+const NO_BLANKET_ALLOW = new Set(['Bash', 'PowerShell']);
+
 // Classify failures as i18n codes; the renderer picks the localized text.
 function friendlyError(err) {
   const raw = String((err && err.message) || err || 'Unknown error');
@@ -106,6 +112,9 @@ class AgentSession {
     this.currentEffort = 'high';   // CLI default per the docs
     this.fastMode = false;
     this.reconnects = 0;           // consecutive network-reconnect attempts
+    // The CLI session id — the anchor for network reconnects. Starts as the
+    // resume id (if any) and follows every init message from then on.
+    this.currentSessionId = resumeId || null;
 
     this.query = this.createQuery(resumeId, resumeAt);
 
@@ -254,7 +263,9 @@ class AgentSession {
     if (!entry) return;
     this.pending.delete(id);
     if (decision && decision.allow) {
-      if (decision.always) this.alwaysAllow.add(entry.toolName);
+      if (decision.always && !NO_BLANKET_ALLOW.has(entry.toolName)) {
+        this.alwaysAllow.add(entry.toolName);
+      }
       entry.resolve({ behavior: 'allow', updatedInput: entry.input });
     } else {
       entry.resolve({ behavior: 'deny', message: 'The user declined this action in VibeShell.' });
@@ -283,6 +294,7 @@ class AgentSession {
 
     if (msg.type === 'system' && msg.subtype === 'init') {
       this.currentModel = msg.model;
+      this.currentSessionId = msg.session_id || this.currentSessionId;
       this.emit('ready', { model: msg.model, sessionId: msg.session_id });
       // The picker already has the list; init just tells it which one is live.
       this.emit('model-changed', { model: msg.model });
@@ -748,4 +760,4 @@ function registerAgentHandlers() {
   });
 }
 
-module.exports = { registerAgentHandlers };
+module.exports = { registerAgentHandlers, AgentSession };

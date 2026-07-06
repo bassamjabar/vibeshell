@@ -33,3 +33,9 @@ jobs:
 
       - name: CLI logic tests
         run: node cli/vibeshell.test.js
+
+      - name: Agent session tests
+        run: node test/agent.test.js
+
+      - name: VS Code host bridge test
+        run: node vscode-extension/test/host-bridge.test.js
