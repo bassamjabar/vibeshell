@@ -190,13 +190,14 @@ class AgentSession {
   }
 
   // payload: plain string, or { text, images: [{ mediaType, data(base64) }],
-  //          documents: [{ mediaType, data(base64), name }] }.
-  // Documents and images go first in the content blocks (the API reads them
-  // better that way), then the text.
+  //          documents: [{ mediaType, data(base64), name }],
+  //          files: [{ name, text }] }.
+  // Documents, images, and code files go first in the content blocks (the API
+  // reads them better that way), then the user's text.
   send(payload) {
-    const { text, images, documents } =
+    const { text, images, documents, files } =
       typeof payload === 'string'
-        ? { text: payload, images: [], documents: [] }
+        ? { text: payload, images: [], documents: [], files: [] }
         : (payload || {});
 
     const blocks = [];
@@ -214,6 +215,13 @@ class AgentSession {
         type: 'image',
         source: { type: 'base64', media_type: String(img.mediaType), data: String(img.data) },
       });
+    }
+    // Code/text files: plain-text blocks the agent reads like pasted source.
+    for (const file of (files || []).slice(0, 10)) {
+      if (!file || typeof file.text !== 'string') continue;
+      const name = file.name ? String(file.name) : 'file';
+      const body = file.text.length > 400000 ? `${file.text.slice(0, 400000)}\n… (truncated)` : file.text;
+      blocks.push({ type: 'text', text: `File: ${name}\n\n\`\`\`\n${body}\n\`\`\`` });
     }
     const trimmed = String(text || '').trim();
     if (trimmed) blocks.push({ type: 'text', text: trimmed });

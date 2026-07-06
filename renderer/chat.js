@@ -374,10 +374,12 @@
     if (entry && Array.isArray(entry.docs) && entry.docs.length > 0) {
       const docs = document.createElement('div');
       docs.className = 'msg-docs';
-      for (const nm of entry.docs) {
+      for (const d of entry.docs) {
+        const name = typeof d === 'string' ? d : d.name;
+        const icon = (d && d.kind === 'file') ? '📃' : '📄';
         const chip = document.createElement('div');
         chip.className = 'msg-doc';
-        chip.textContent = `📄 ${nm}`;
+        chip.textContent = `${icon} ${name}`;
         docs.appendChild(chip);
       }
       el.appendChild(docs);
@@ -1207,23 +1209,42 @@
   const attachStrip = document.querySelector('#attach-strip');
   const fileInput = document.querySelector('#file-input');
   const pdfInput = document.querySelector('#pdf-input');
+  const codeInput = document.querySelector('#code-input');
   const dropHint = document.querySelector('#drop-hint');
   const screenEl = document.querySelector('#screen-project');
 
   const MAX_IMAGES = 8;
   const MAX_DOCS = 5;
+  const MAX_FILES = 10;
   const MAX_PDF_BYTES = 25 * 1024 * 1024; // ~33MB once base64-encoded, under the API cap
+  const MAX_TEXT_BYTES = 1024 * 1024;     // code/text files are small; 1MB is generous
   const MAX_EDGE = 1568;      // Anthropic's sweet spot; bigger is wasted tokens
   const KEEP_AS_IS = 2 * 1024 * 1024;
 
+  // Source files the "code file" picker recognises (drag/drop uses this too).
+  const CODE_EXT = /\.(js|jsx|ts|tsx|mjs|cjs|py|rb|go|rs|java|kt|kts|c|h|cpp|cc|hpp|hxx|cs|php|swift|dart|scala|clj|ex|exs|erl|hs|ml|sh|bash|zsh|fish|ps1|bat|pl|lua|r|jl|m|mm|sql|graphql|proto|html?|css|scss|sass|less|styl|vue|svelte|astro|json|jsonc|ya?ml|toml|ini|cfg|conf|env|xml|md|markdown|mdx|txt|text|csv|tsv|gradle|properties|dockerfile|makefile|mk|cmake|gitignore|gitattributes|editorconfig|npmrc|log|tex|rst|adoc|ipynb)$/i;
+
   // Images: { kind:'image', mediaType, data(base64), previewUrl }
   // PDFs:   { kind:'pdf',   mediaType:'application/pdf', data(base64), name }
+  // Code:   { kind:'file',  name, text }
   let attachments = [];
-  const imageCount = () => attachments.filter((a) => a.kind !== 'pdf').length;
+  const imageCount = () => attachments.filter((a) => a.kind === 'image').length;
   const docCount = () => attachments.filter((a) => a.kind === 'pdf').length;
+  const fileCount = () => attachments.filter((a) => a.kind === 'file').length;
 
   function isPdfFile(file) {
     return !!file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || ''));
+  }
+
+  // A file we can safely read as text (so drag/drop doesn't mangle a binary).
+  function isTextFile(file) {
+    if (!file) return false;
+    const type = file.type || '';
+    return type.startsWith('text/') ||
+      type === 'application/json' ||
+      type === 'application/xml' ||
+      CODE_EXT.test(file.name || '') ||
+      (type === '' && !/\.(png|jpe?g|gif|webp|bmp|ico|svg|pdf|zip|gz|tar|rar|7z|exe|dll|so|dylib|bin|mp[34]|mov|avi|mkv|wav|ogg|ttf|otf|woff2?|doc|xls|ppt)x?$/i.test(file.name || ''));
   }
 
   // PDFs ride along as base64 "document" blocks — Claude reads them natively.
@@ -1241,6 +1262,22 @@
         data: String(dataUrl).split(',')[1],
         name: file.name || 'document.pdf',
       };
+    } catch {
+      return null;
+    }
+  }
+
+  // Code/text files ride along as plain-text blocks — the surest way for the
+  // agent to read source of any language, whatever the extension.
+  async function prepareTextFile(file) {
+    if (!file) return null;
+    if (file.size > MAX_TEXT_BYTES) {
+      addErrorLine(t('fileTooLarge', { n: Math.round(MAX_TEXT_BYTES / 1024 / 1024) }));
+      return null;
+    }
+    try {
+      const text = await file.text();
+      return { kind: 'file', name: file.name || 'file.txt', text };
     } catch {
       return null;
     }
@@ -1296,11 +1333,11 @@
       const chip = document.createElement('div');
       chip.className = 'attach-chip';
 
-      if (att.kind === 'pdf') {
+      if (att.kind !== 'image') {
         chip.classList.add('file');
         const icon = document.createElement('span');
         icon.className = 'file-icon';
-        icon.textContent = '📄';
+        icon.textContent = att.kind === 'pdf' ? '📄' : '📃';
         const name = document.createElement('span');
         name.className = 'file-name';
         name.textContent = att.name;
@@ -1315,7 +1352,7 @@
       const remove = document.createElement('button');
       remove.className = 'attach-remove';
       remove.textContent = '×';
-      remove.title = t(att.kind === 'pdf' ? 'removeFile' : 'removeImage');
+      remove.title = t(att.kind === 'image' ? 'removeImage' : 'removeFile');
       remove.addEventListener('click', () => {
         attachments.splice(index, 1);
         renderAttachments();
@@ -1326,11 +1363,16 @@
     });
   }
 
-  async function addFiles(fileList) {
+  // forceText: the "code file" picker treats whatever you chose as text, even
+  // an odd extension. Drag/drop & paste stay conservative (isTextFile guard).
+  async function addFiles(fileList, forceText = false) {
     const all = Array.from(fileList || []);
     const images = all.filter((f) => f.type.startsWith('image/'));
     const pdfs = all.filter((f) => isPdfFile(f) && !f.type.startsWith('image/'));
-    if (images.length === 0 && pdfs.length === 0) return;
+    const codeFiles = all.filter(
+      (f) => !f.type.startsWith('image/') && !isPdfFile(f) && (forceText || isTextFile(f))
+    );
+    if (images.length === 0 && pdfs.length === 0 && codeFiles.length === 0) return;
 
     for (const file of images) {
       if (imageCount() >= MAX_IMAGES) {
@@ -1346,6 +1388,14 @@
         break;
       }
       const prepared = await preparePdf(file);
+      if (prepared) attachments.push(prepared);
+    }
+    for (const file of codeFiles) {
+      if (fileCount() >= MAX_FILES) {
+        addErrorLine(t('maxFiles', { n: MAX_FILES }));
+        break;
+      }
+      const prepared = await prepareTextFile(file);
       if (prepared) attachments.push(prepared);
     }
     renderAttachments();
@@ -1370,6 +1420,10 @@
     closeAttachMenu();
     pdfInput.click();
   });
+  document.querySelector('#attach-pick-code').addEventListener('click', () => {
+    closeAttachMenu();
+    codeInput.click();
+  });
   document.addEventListener('click', (event) => {
     if (!attachMenu.classList.contains('hidden') && !event.target.closest('.attach-wrap')) {
       closeAttachMenu();
@@ -1382,6 +1436,10 @@
   pdfInput.addEventListener('change', () => {
     addFiles(pdfInput.files);
     pdfInput.value = '';
+  });
+  codeInput.addEventListener('change', () => {
+    addFiles(codeInput.files, true); // whatever the user picked, read it as text
+    codeInput.value = '';
   });
 
   // Paste a screenshot straight into the box.
@@ -1469,13 +1527,19 @@
 
     const busy = sendBtn.classList.contains('stop-mode');
     const images = attachments
-      .filter((a) => a.kind !== 'pdf')
+      .filter((a) => a.kind === 'image')
       .map(({ mediaType, data }) => ({ mediaType, data }));
     const documents = attachments
       .filter((a) => a.kind === 'pdf')
       .map(({ mediaType, data, name }) => ({ mediaType, data, name }));
-    const previews = attachments.filter((a) => a.kind !== 'pdf').map((a) => a.previewUrl);
-    const docNames = documents.map((d) => d.name);
+    const files = attachments
+      .filter((a) => a.kind === 'file')
+      .map(({ name, text: content }) => ({ name, text: content }));
+    const previews = attachments.filter((a) => a.kind === 'image').map((a) => a.previewUrl);
+    const docNames = [
+      ...documents.map((d) => ({ name: d.name, kind: 'pdf' })),
+      ...files.map((f) => ({ name: f.name, kind: 'file' })),
+    ];
     attachments = [];
     renderAttachments();
     inputEl.value = '';
@@ -1499,7 +1563,7 @@
         `[Context — commands I ran myself in the project folder:]\n${ctx}\n\n${text}`;
       pendingShell = [];
     }
-    window.vibeshell.agent.send({ text: outgoing, images, documents });
+    window.vibeshell.agent.send({ text: outgoing, images, documents, files });
   }
 
   function autoGrow() {

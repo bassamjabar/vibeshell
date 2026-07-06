@@ -35,6 +35,7 @@ It runs three ways:
 ### Features
 
 - 💬 **Chat, don't type commands** — describe the change; the agent does the work.
+- 📎 **Attach images, PDFs & code files** — drop a screenshot or any source file straight into the chat. A plain terminal can't accept files at all.
 - 👀 **Review before apply** — see each edit as a diff and approve it.
 - 🔀 **Parallel sessions** — run multiple agents on different projects at once.
 - 🔒 **Permissions & MCP, from a GUI** — manage tools and servers without editing JSON.
@@ -181,6 +182,7 @@ npm run test:e2e                # desktop smoke test
 ### المميزات
 
 - 💬 **تحدّث، لا تكتب أوامر** — صِف التعديل والوكيل ينفّذه.
+- 📎 **إرفاق صور و⁦PDF⁩ وملفات الأكواد** — أرسِل لقطة شاشة أو أي ملف مصدري مباشرةً إلى المحادثة. الترمنال العادي لا يستطيع استقبال أي ملفات إطلاقاً.
 - 👀 **راجع قبل التطبيق** — شاهد كل تعديل كـ ⁦diff⁩ ووافق عليه.
 - 🔀 **جلسات متوازية** — شغّل عدة وكلاء على مشاريع مختلفة في آنٍ واحد.
 - 🔒 **الصلاحيات و ⁦MCP⁩ من واجهة** — أدِر الأدوات والخوادم دون تعديل ⁦JSON⁩.
